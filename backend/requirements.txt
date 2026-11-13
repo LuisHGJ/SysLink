@@ -1,0 +1,35 @@
+# ─── Framework ──────────────────────────────────────────────────
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# ─── Banco de Dados ─────────────────────────────────────────────
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+apify-client==1.8.1
+# apify-client 1.8.x importa apify_shared.utils.ignore_docs, que sumiu na 2.x.
+# Sem teto, o pip instala a 2.3.0 e TODO /excavate volta 502 no import.
+apify-shared>=1.1.2,<2
+alembic==1.14.0
+
+# ─── Validação / Settings ───────────────────────────────────────
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# ─── Segurança ──────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+# bcrypt ≥4.1 quebra o passlib 1.7.4 (detect_wrap_bug → ValueError em
+# TODO hash de senha → 500 no register/login). Pinar: 4.0.1 é a última
+# compatível e a mesma versão validada localmente.
+bcrypt==4.0.1
+python-multipart==0.0.20
+
+# ─── Logging / Observabilidade ──────────────────────────────────
+structlog==24.4.0
+sentry-sdk[fastapi]==2.19.0
+
+# ─── Testes ─────────────────────────────────────────────────────
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1

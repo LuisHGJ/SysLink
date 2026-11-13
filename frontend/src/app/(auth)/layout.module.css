@@ -1,0 +1,9 @@
+/* Shell centralizado das telas de autenticação (sem sidebar). */
+.shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  background: var(--color-bg);
+}

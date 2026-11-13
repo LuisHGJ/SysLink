@@ -1,0 +1,22 @@
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.facil {
+  background: var(--dificuldade-facil-bg);
+  color: var(--dificuldade-facil-text);
+}
+
+.medio {
+  background: var(--dificuldade-medio-bg);
+  color: var(--dificuldade-medio-text);
+}
+
+.dificil {
+  background: var(--dificuldade-dificil-bg);
+  color: var(--dificuldade-dificil-text);
+}

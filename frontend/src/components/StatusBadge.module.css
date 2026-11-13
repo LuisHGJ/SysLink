@@ -1,0 +1,43 @@
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--border-radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.naoContatado {
+  background: var(--status-nao-contatado-bg);
+  color: var(--status-nao-contatado-text);
+}
+
+.aguardando {
+  background: var(--status-aguardando-bg);
+  color: var(--status-aguardando-text);
+}
+
+.negociando {
+  background: var(--status-negociando-bg);
+  color: var(--status-negociando-text);
+}
+
+.negado {
+  background: var(--status-negado-bg);
+  color: var(--status-negado-text);
+}
+
+.fechado {
+  background: var(--status-fechado-bg);
+  color: var(--status-fechado-text);
+}
+
+.emDev {
+  background: var(--status-em-dev-bg);
+  color: var(--status-em-dev-text);
+}
+
+.finalizado {
+  background: var(--status-finalizado-bg);
+  color: var(--status-finalizado-text);
+}

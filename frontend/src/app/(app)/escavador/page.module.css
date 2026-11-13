@@ -1,0 +1,455 @@
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+  /* .appContent é height:100vh + overflow:hidden → cada página cuida do
+     próprio scroll. Header + formulário fixos, só a lista rola. */
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  margin-top: var(--spacing-xs);
+}
+
+/* ── Cota diária de perfis escavados ─────────────────────────── */
+.quotaBadge,
+.quotaBadgeExhausted {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-full);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+}
+
+.quotaBadgeExhausted {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+/* ── Formulário ──────────────────────────────────────────────── */
+.formCard {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.formRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.fieldGrow {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.fieldSmall {
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.required {
+  color: var(--color-error);
+}
+
+.input,
+.select {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text);
+  padding: 0.65rem 0.85rem;
+  font-size: var(--font-size-base);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--color-border-focus);
+}
+
+.input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.input:disabled,
+.select:disabled {
+  opacity: 0.6;
+}
+
+.select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a0a0a8' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.select option {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+}
+
+.excavateBtn {
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--border-radius-md);
+  color: var(--color-primary-contrast);
+  padding: 0.65rem 1.5rem;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+
+.excavateBtn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.excavateBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Erro ────────────────────────────────────────────────────── */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--status-negado-bg);
+  border: 1px solid var(--status-negado-text);
+  border-radius: var(--border-radius-md);
+  color: var(--status-negado-text);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.errorBanner button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: var(--font-size-base);
+}
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-2xl);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  flex-shrink: 0;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Resumo ──────────────────────────────────────────────────── */
+.summaryBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.summaryText {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.summaryActions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.acceptAllBtn {
+  background: var(--status-fechado-bg);
+  border: 1px solid var(--status-fechado-text);
+  border-radius: var(--border-radius-md);
+  color: var(--status-fechado-text);
+  padding: 0.4rem 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: opacity var(--transition-fast);
+}
+
+.acceptAllBtn:hover {
+  opacity: 0.8;
+}
+
+.rejectAllBtn {
+  background: var(--status-negado-bg);
+  border: 1px solid var(--status-negado-text);
+  border-radius: var(--border-radius-md);
+  color: var(--status-negado-text);
+  padding: 0.4rem 0.9rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: opacity var(--transition-fast);
+}
+
+.rejectAllBtn:hover {
+  opacity: 0.8;
+}
+
+/* ── Resultados ──────────────────────────────────────────────── */
+/* Única região com scroll: ocupa o resto da viewport (flex:1) e os cards
+   rolam enquanto o header e o formulário ficam fixos em cima. */
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-light) transparent;
+}
+
+.resultCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  transition: border-color var(--transition-fast);
+}
+
+.resultCard:hover {
+  border-color: var(--color-border-light);
+}
+
+.cardAccepted {
+  border-color: var(--status-fechado-text);
+  opacity: 0.7;
+}
+
+.cardRejected {
+  opacity: 0.4;
+}
+
+.cardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTop {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.cardName {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.cardIgLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.cardIgLink:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.verifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  border-radius: var(--border-radius-full);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+.cardBio {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  margin-bottom: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+}
+
+.cardFollowers {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.cardCategoria {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--border-radius-full);
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.cardEmpresa {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cardProduto {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  background: var(--color-bg-tertiary);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--border-radius-full);
+}
+
+.cardConf {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.acceptBtn {
+  background: var(--status-fechado-bg);
+  border: 1px solid var(--status-fechado-text);
+  border-radius: var(--border-radius-md);
+  color: var(--status-fechado-text);
+  padding: 0.4rem 1rem;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+
+.acceptBtn:hover {
+  opacity: 0.8;
+}
+
+.rejectBtn {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  color: var(--color-text-secondary);
+  padding: 0.4rem 0.7rem;
+  font-size: var(--font-size-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.rejectBtn:hover {
+  background: var(--status-negado-bg);
+  color: var(--status-negado-text);
+  border-color: var(--status-negado-text);
+}
+
+.statusAccepted {
+  font-size: var(--font-size-sm);
+  color: var(--status-fechado-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.statusRejected {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+/* ── Vazio ───────────────────────────────────────────────────── */
+.empty {
+  text-align: center;
+  color: var(--color-text-tertiary);
+  padding: var(--spacing-2xl);
+  font-size: var(--font-size-base);
+  flex-shrink: 0;
+}
