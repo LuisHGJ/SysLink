@@ -1,7 +1,7 @@
 # Contexto_IA.md — Documentação Técnica do Projeto SysLink
 
 > Arquivo de contexto para IA — atualizar a cada mudança significativa na base do projeto.
-> Última atualização: 2026-11-12 (v0.2.2 — Escavador: cota diária de 50 perfis escavados por usuário)
+> Última atualização: 2026-11-19 (v0.3.7 — travessões "—" removidos de TODO texto visível da UI, substituídos por ponto ou vírgula; comentários de código e o placeholder "—" das células vazias da tabela de Leads ficam como estão; textos internos de prompt (`prompts/abordagem.md`) mantidos; v0.3.6 — Abordagem: switch Config/Leads na coluna esquerda; painel lista as conversas com histórico (`GET /messages/conversations`) e o clique abre a conversa do lead ao lado via estado `leadId` + `?lead=` na URL; 233 testes backend passando)
 
 ---
 
@@ -18,7 +18,7 @@
 | Secrets | `.env` na raiz (nunca commitado) |
 | Lint/Format | Biome (frontend) |
 | Testes | Pytest (backend, TDD) |
-| Navegação | Sidebar fixa (Leads / Escavador / Gerador) + alternador de tema + sair |
+| Navegação | Sidebar fixa (Leads / Escavador / Gerador / Abordagem) + alternador de tema + sair |
 | Auth | Multi-usuário: JWT 7 dias (python-jose) + bcrypt (passlib) + verificação de e-mail via Resend |
 | IA | OpenRouter — Nemotron (`nvidia/nemotron-3.5-lightning:free`) |
 | Scraping | Apify — `apify/instagram-search-scraper` |
@@ -48,21 +48,29 @@ SysLink/
 │   │   ├── middleware.py       # RequestIDMiddleware
 │   │   ├── logging_config.py   # structlog JSON + RedactionFilter
 │   │   ├── error_handlers.py   # Handlers RFC 7807 problem+json
+│   │   ├── prompts/
+│   │   │   └── abordagem.md    # Contexto de vendas do copiloto (lido INTEIRO p/ o prompt)
 │   │   ├── routes/             # Camada HTTP (sem lógica de negócio)
 │   │   │   ├── auth.py         # register/confirm/login/me/forgot/reset/resend
 │   │   │   ├── leads.py        # CRUD de leads (exige Bearer via _get_service)
-│   │   │   └── excavator.py    # Escavador (exige Bearer no APIRouter)
+│   │   │   ├── excavator.py    # Escavador (exige Bearer no APIRouter)
+│   │   │   ├── settings.py     # GET/PUT /settings (preço + dados do vendedor)
+│   │   │   └── messages.py     # POST /reply + histórico do lead (GET/POST/DELETE) + GET /conversations
 │   │   ├── services/
 │   │   │   ├── auth_service.py # bcrypt + JWT + tokens de uso único
 │   │   │   ├── email_service.py# Envio via Resend (confirmação/recuperação)
 │   │   │   ├── lead_service.py
 │   │   │   ├── quota_service.py # Cota diária de perfis escavados (janela BRT)
-│   │   │   └── excavator_service.py # Escavador: Apify + Tavily (paralelo) + classificação IA
+│   │   │   ├── excavator_service.py # Escavador: Apify + Tavily (paralelo) + classificação IA
+│   │   │   ├── settings_service.py # Upsert das configurações (normaliza vazio→None)
+│   │   │   └── message_service.py  # Copiloto: prompt + OpenRouter + guardrail de preço
 │   │   ├── repositories/       # Acesso a dados (SQLAlchemy)
 │   │   │   ├── user_repository.py
 │   │   │   ├── quota_repository.py # Reserva atômica da cota (UPDATE condicional)
-│   │   │   └── lead_repository.py  # TODA query filtra por user_id
-│   │   ├── models/             # users + leads (leads.user_id FK) + daily_quotas
+│   │   │   ├── lead_repository.py  # TODA query filtra por user_id
+│   │   │   ├── message_repository.py # Histórico por lead (também filtra por user_id)
+│   │   │   └── settings_repository.py # Linha única por user_id (upsert)
+│   │   ├── models/             # users + leads (leads.user_id FK) + daily_quotas + user_settings + messages
 │   │   ├── schemas/            # Schemas Pydantic
 │   │   ├── dependencies/
 │   │   │   ├── auth.py         # get_current_user (Bearer → User)
@@ -75,7 +83,9 @@ SysLink/
 │       ├── test_health.py
 │       ├── test_leads.py
 │       ├── test_quota.py       # 14 testes da cota diária de escavação
-│       └── test_excavator.py
+│       ├── test_excavator.py    # 44 testes (busca, cota, Apify/Tavily, regressões de schema)
+│       ├── test_settings.py    # 10 testes das configurações do usuário
+│       └── test_messages.py    # 49 testes do copiloto + guardrail + histórico + conversas
 │
 └── frontend/
     ├── Dockerfile
@@ -92,7 +102,8 @@ SysLink/
         │   │   ├── layout.tsx  # AuthGuard + Sidebar + .appContent
         │   │   ├── leads/      # Tabela de leads (CRUD + CSV)
         │   │   ├── escavador/  # Escavador de leads via IA
-        │   │   └── gerador/    # Gerador de prompt
+        │   │   ├── gerador/    # Gerador de prompt
+        │   │   └── abordagem/  # Copiloto de vendas (switch Config/Leads à esq. + chat à dir.)
         │   └── (auth)/         # Telas de auth — sem sidebar, centralizadas
         │       ├── layout.tsx  # GuestGuard (logado → /leads)
         │       ├── login/
@@ -105,11 +116,12 @@ SysLink/
         │   ├── tokens.css      # Tokens de tema globais
         │   └── global.css      # Reset + importa tokens
         ├── api/
-        │   ├── client.ts       # Fetch wrapper + CRUD + authApi (Bearer automático)
+        │   ├── client.ts       # Fetch wrapper + CRUD + authApi + settingsApi + histórico (Bearer automático)
         │   ├── auth.ts         # Token no localStorage + 401 → /login
         │   ├── types.ts        # Enums e tipos do CRM
         │   ├── prompt.ts       # Template do prompt + buildPrompt()
         │   ├── excavator.ts    # Cliente da API do Escavador + toLeadCreate()
+        │   ├── messages.ts     # Cliente da API de abordagem (generateReply)
         │   ├── index.ts        # Re-exporta tipos gerados
         │   └── generated.ts    # GERADO via openapi-typescript
         ├── components/
@@ -210,6 +222,9 @@ SysLink/
   - os resultados são unidos em **round-robin** (`Apify[0], Tavily[0], Apify[1], Tavily[1]…`) e **deduplicados por `@username`**, com teto em `quantidade` — a alternância evita que a Apify, ao já devolver `quantidade` perfis, esconda todos os do Tavily;
   - **falha em UMA fonte não derruba a busca:** log `search_source_failed` + resposta com os resultados parciais da outra (sem 502). Só erro nas DUAS vira 502 citando as fontes; **nenhuma chave** → 502 `"APIFY_API_TOKEN e TAVILY_API_KEY não configuradas no .env"`.
 - **Apify:** `apify/instagram-search-scraper` — scraping de perfis (bio, seguidores, categoria, verificado, negócio). Sem `APIFY_API_TOKEN` a fonte nem é chamada.
+  - **Input do actor (contrato volátil):** `{"search": nicho, "searchType": "user", "searchLimit": min(count, 250)}`. A Apify **atualiza o schema do actor sem avisar** — em 2026-11-17 `searchType` deixou de aceitar `"profiles"` e passou a exigir `"place" | "user" | "hashtag" | "popular"`, devolvendo **400** `Input is not valid: Field input.searchType must be equal to one of the allowed values` → todo `/excavate` virava 502. **`searchType: "user"` = perfis.** Teste de regressão: `TestApifyRunInput` (`test_excavator.py`) monkeypatcha o `ApifyClient` e valida o `run_input` exato + o teto de 250. Não ligar `enhanceUserSearchWithFacebookPage` (risco LGPD, já discutido no projeto).
+- **`null` nas fontes (regressão v0.3.1):** `dict.get(chave, default)` **não cobre valor `null`** — o default só vale para chave AUSENTE. A Apify passou a enviar `businessCategoryName: null` (entre outros) e o `None` vazava para o `ExcavateResponse` (`categoria: str`) → **500** na montagem da resposta, mesmo com a busca tendo dado certo. A montagem em `excavator_service.excavate` usa `or`/checagem explícita em TODOS os campos (`seguidores`, `bio`, `categoria`, `verificado`, `negocio`, `url`, `produto`, `dificuldade`, `confianca`) e `nome` cai para o username. Teste: `TestNullFieldsFromSources`.
+- **Variáveis de ambiente mudaram? RE-CRIAR o container:** `docker compose restart` **não re-interpola** o `.env` — ele só reinicia o processo. Container criado antes de uma chave existir fica **sem ela para sempre** (ex.: `TAVILY_API_KEY` vazia no container = fonte nem é agendada, sem nenhum log de erro). Use `docker compose up -d backend` (recreate) e confira com `docker exec syslink_backend printenv NOME_DA_VAR`.
 - **Tavily:** `POST https://api.tavily.com/search` com `include_domains: ["instagram.com"]` + `include_domains_mode: "restrict"` (filtro duro), `search_depth: "basic"` (1 crédito), `max_results: min(quantidade, 20)` — **teto da API** — e timeout de 30 s no httpx compartilhado. Só entram URLs de perfil de um segmento (`instagram.com/{user}/`): `/p/`, `/reel/`, `/explore/`, subcaminhos e outros domínios são descartados. Do title/conteúdo são extraídos **nome** (texto antes de `(@user)`), **seguidores** (`1,5K`→1500, `1,512`→1512, `12.500`→12500) e **bio** (a meta description `1,512 Followers, … (@user)` é removida). Perfis Tavily vêm sem `categoria`/`verificado`/`negócio` (defaults falsos) — a classificação IA compensa.
 - **Classificação:** IA via OpenRouter (`nvidia/nemotron-3.5-lightning:free`) atribui produto, dificuldade e confiança — perfis fatiados em **chunks de 15** (`CLASSIFY_CHUNK_SIZE`) e classificados **em paralelo** com `asyncio.gather` (menos latência, resposta menos propensa a truncar no `max_tokens`); falha em um chunk deixa só aquele trecho com os defaults, sem derrubar os demais (teto: `CLASSIFY_MAX_PROFILES = 50`)
 - **Config:** `APIFY_API_TOKEN`, `APIFY_ACTOR_ID`, `TAVILY_API_KEY`, `OPENROUTER_API_KEY`, `EXCAVATE_DAILY_PROFILE_LIMIT` no `.env`
@@ -307,6 +322,45 @@ Padrão único em **todos** os endpoints — corpo `application/problem+json`:
 
 ---
 
+### 3.10 Abordagem (rota `/abordagem`) — copiloto de vendas
+
+- **Função:** o vendedor cola a mensagem do CLIENTE e a IA devolve a próxima mensagem do vendedor (raciocínio curto + texto pronto para copiar). Tela em duas colunas: **configuração à esquerda** (preço, nome, empresa, tom de voz) + **chat à direita** (histórico Cliente/Sugestão com botão Copiar e "Nova conversa"). **Não é chatbot com o cliente** — quem envia é o vendedor.
+- **Novo recurso — botão "Enviar mensagem" por lead:** cada row da tabela de leads tem um ícone de mensagem `💬` que, ao ser clicado, abre `/abordagem?lead=<id>`. O backend carrega a ficha completa do lead (nome, empresa, instagram, contato, produto, dificuldade, status, último contato) via `LeadRepository` (já filtrado por `user_id`). A ficha é injetada no system prompt via `render_lead_block()` — a IA sabe exatamente com quem está falando e o contexto começa com "DADOS DO LEAD". Se o `lead_id` for inválido, não pertencer ao usuário ou não existir → **404** (não pode ser spoofed). O chip no topo do header mostra "Carregando lead..." enquanto a busca roda; ao carregar, exibe o nome/empresa do lead.
+- **Arquitetura do "RAG" — deliberadamente simples (sem pgvector, sem embeddings):**
+  - a base é **1 produto + 1 script** → `backend/app/prompts/abordagem.md` (produto, etapas da abordagem, objeções, tom, regra de ouro) é lido **INTEIRO** no system prompt (`_load_context()` com `lru_cache`) — fatiar e buscar só adicionaria falha de retrieval;
+  - preço/nome/empresa/tom são **dado estruturado**: vivem em `user_settings` e são **injetados** no bloco `DADOS DO VENDEDOR` (`render_system_prompt()`), nunca "buscados" pela IA — injeção não tem etapa que devolva valor desatualizado;
+  - **guardrail determinístico pós-geração:** `extract_prices()` / `assert_prices_ok()` comparam TODO valor monetário (`R$ 97`, `1.200,00`, `97 reais`) de `mensagem` **e** `raciocinio` com o preço configurado — divergiu → `ExternalServiceError` (502) em vez de mensagem errada; **sem preço configurado, qualquer valor citado é bloqueado**;
+  - saída JSON `{"raciocinio", "mensagem"}` com parse tolerante a ```` ```json ```` (mesmo padrão da classificação do Escavador); `temperature 0.4`, `max_tokens 1200`, `reasoning` desabilitado.
+- **Novo recurso — `lead_id` no `POST /api/v1/messages/reply`:** o payload agora aceita opcionalmente `lead_id`. Quando informado, o `MessageService` (que recebe `LeadRepository` já escopado por `user_id`) carrega a ficha e a injeta no prompt. `lead_id` alheio → 404; `lead_id` inexistente → 404; tipo int `ge=1`, `extra="forbid"` no schema (tipos não-inteiros ou zero são 422).
+- **Parser tolerante de JSON (v0.3.3 — corrige "resposta em formato inválido" na 2ª mensagem):** `_parse_reply` antes exigia exatamente `{"raciocinio", "mensagem"}` com JSON limpo — o modelo Nemotron às vezes devolve texto ao redor, chaves alternativas ou estrutura aninhada e o 2º request do chat falhava. Agora o parser: (1) remove cercas de ```` ``` ````; (2) tenta `json.loads` no primeiro bloco `{...}`; (3) se falhar, acha o bloco `{...}` **balanceado por profundidade** (regex recursiva `(?R)` não existe no `re` do Python — `PatternError`); (4) extrai `raciocinio`/`mensagem` de chaves alternativas (`pensamento`, `thinking`, `resposta`, `texto`…); (5) fallback: maior string do objeto vira `mensagem`. Só se nada funcionar → 502 "formato inválido".
+- **Retry + fallback de prosa (v0.3.4 — corrige a causa raiz restante):** o diagnóstico em produção mostrou que o modelo às vezes ignora o formato e devolve **prosa pura sem nenhum `{`** (log `reply_format_retry`, `tem_json: false`) — nenhuma técnica de parsing resolve isso. Agora `reply()`: (1) tenta `_parse_reply`; (2) em falha, reenvia **uma vez** com `_FORMAT_REMINDER` acrescentado ao system prompt ("LEMBRETE: … responda SOMENTE com o objeto JSON…"); (3) se ainda assim falhar, `_prose_fallback` aceita a prosa como `mensagem` (com `raciocinio` vazio) **desde que não comece com `{`** — JSON truncado nunca vira fala pronta; vazio ou >4000 chars → 502. O guardrail de preço continua rodando em cima do resultado nos dois caminhos. Coberto por 3 testes novos (`test_broken_json_returns_502_even_after_retry`, `test_pure_prose_is_retried_with_format_reminder`, `test_pure_prose_after_retry_becomes_the_message`); `fake_chat` agora aceita lista de respostas (uma por chamada) e expõe `captured["calls"]`.
+- **Conftest não toca no Postgres externo (v0.3.4):** o lifespan do `TestClient` rodava `create_all` contra `DATABASE_URL` real (`localhost:5432`) — ~2,2s de setup por teste quando outro Postgres escuta na porta (suíte foi de 16s para 6min). Fixture autouse `_lifespan_uses_test_db` faz monkeypatch de `app.main.engine` para o SQLite de teste. Suíte volta a ~16s.
+- **Mensagem inicial automática (v0.3.3):** quando o lead carrega via `?lead=<id>`, a página insere sozinha a 1ª fala do cliente no chat (`Olá, {nome}! Vi seu perfil…`) — a conversa já começa com contexto em vez de tela vazia. `handleReset` ("Nova conversa") **restaura** essa mensagem se ainda houver lead acoplado; sem lead, o chat volta vazio. A entrada é criada só se o histórico estiver vazio (nunca sobrescreve conversa em andamento).
+- **Toggle mostrar/ocultar configuração (v0.3.3):** `showConfig` no estado da página; o botão ("Ocultar config"/"Mostrar config") fica **fora** do `<aside>` condicional — dentro dele sumiria junto com o painel e o usuário não conseguiria reabrir. Layout: `{showConfig && <aside>…</aside>}` + `<section>` do chat sempre visível; o texto do estado vazio do chat muda conforme o toggle. Classes novas no module.css: `.toggleRow`, `.toggleBtn`.
+- **Endpoints:** `GET /api/v1/settings` (campos nulos se nunca salvos), `PUT /api/v1/settings` (parcial — só os campos enviados mudam; `null` limpa; string vazia → `None`; `extra="forbid"`; `preco ge=0`), `POST /api/v1/messages/reply` → `{ mensagens: [{autor: "cliente"|"vendedor", texto}] }` → `{ raciocinio, mensagem }` — a **última** mensagem deve ser do cliente (400 senão; 422 se a lista for vazia). Aceita payload extra `{ lead_id?: int }`. **Histórico (v0.3.5):** `GET /api/v1/messages/lead/{id}` → lista `{ autor, texto, raciocinio? }` em ordem de troca, `POST /api/v1/messages` → salva uma mensagem avulsa (`autor`, `texto`, `lead_id?`, `raciocinio?`; 201) e `DELETE /api/v1/messages/lead/{id}` → apaga a conversa do lead (204, o "Nova conversa"). Nos **três** o lead é validado pelo `LeadRepository` escopado: inexistente/alheio → **404** (não vaza existência); sem token → 401. **Lista de conversas (v0.3.6):** `GET /api/v1/messages/conversations` → `[ConversationSummary]` — uma linha por lead **com** histórico (`lead_id`, `nome`, `empresa`, `instagram`, `produto`, `status`, `total` de mensagens, `ultima_em`), da atividade mais recente para a mais antiga; agrupada no `MessageRepository.conversations()` (join com `Lead` escopado — lead apagado some da lista) e sem lead → lista vazia.
+- **Dados:** tabela `user_settings` (linha única por `user_id`, `preco Numeric(10,2)` NULL = não configurado) + tabela `messages` (`user_id` FK + `lead_id` FK, `autor` "cliente"/"vendedor", `texto`, `raciocinio`, `criado_em` com `server_default=now()`) — as duas criadas pelo `create_all` do lifespan. `create_all` **não altera tabela existente** → `_ensure_message_raciocinio_column()` no lifespan faz `ALTER TABLE messages ADD COLUMN IF NOT EXISTS raciocinio TEXT` (só Postgres; SQLite dos testes já nasce com a coluna).
+- **Histórico por lead PERSISTIDO (v0.3.5):** `MessageService.reply()` grava a **fala do cliente + a sugestão gerada** (com `raciocinio`) num **único commit** quando há `lead_id` — é o que faz a conversa reaparecer ao reabrir o lead; sem `lead_id` nada é gravado (o chat avulso continua só no estado da página). A persistência é **melhor-esforço**: exceção de banco vira log `reply_history_persist_failed` e a resposta já validada ainda é entregue (testado). `MessageRepository.create()` é **idempotente por lead** (última mensagem com mesmo autor+texto → devolve a existente): cobre o duplo-run de efeito do React StrictMode e duplo clique na abertura. Ordenação por **`id`** (não `criado_em` — precisão de segundo daria empate instável). Falha de persistência nunca derruba o `reply`.
+- **Config/limites:** reusa `OPENROUTER_API_KEY`/`AI_CHAT_MODEL` e o `get_http_client()` compartilhado; `REPLY_TIMEOUT_SECONDS=60`; `rate_limit_user` (100 req/min) no `APIRouter` de `/messages` (reply + histórico) e em `/excavate`; sem chave → 502 `OPENROUTER_API_KEY não configurada no .env`.
+- **Frontend:** `settingsApi` em `client.ts` + `generateReply()` em `api/messages.ts`; histórico em `client.ts` (`loadConversation` / `saveMessage` / `clearConversation` — `StoredMessage` carrega `raciocinio` para o card voltar completo) + `listConversations`/`ConversationSummary` (painel Leads); `Sidebar` ganhou o item **Abordagem**; ao falhar a geração o texto volta para o campo (o histórico não fica com mensagem sem resposta).
+- **Frontend — ciclo de vida do histórico:** ao abrir `/abordagem?lead=<id>` a página carrega o histórico (`historyLoaded`) **antes** de criar a abertura automática — espera `lead && settingsLoaded && historyLoaded && entries.length === 0`, então nunca sobrescreve conversa salva; entradas recebidas ganham ids únicos de `nextId.current++` (sem `id: 0` duplicado nas keys) e falha de leitura é engolida (conversa começa do zero). O **envio** não salva mais nada na tela: o backend persiste no `reply`. A **abertura** (etapa 1) é salva via `saveMessage` (fire-and-forget) e o **"Nova conversa"** chama `DELETE /lead/{id}` antes de recriar a abertura — sem isso a conversa antiga voltaria no reload. Sem lead, nada é persistido.
+- **Frontend — switch Config/Leads (v0.3.6):** a coluna esquerda da `/abordagem` virou um switch de dois botões (`leftPanel: "config" | "leads"`, com `aria-pressed` — o antigo toggle "Mostrar/Ocultar config" saiu). No painel **Leads**, `GET /messages/conversations` recarrega **a cada abertura** do painel e renderiza a lista (`leadList`/`leadItem` com nome, meta instagram/empresa + produto + total de mensagens; o item ativo usa `leadItemActive` + `aria-current`). Clicar num item chama `openLead(id)` → `setLeadId(id)` + `router.replace('/abordagem?lead=<id>')`. O lead passou a viver no **estado `leadId`** (e não mais lido só na montagem): um efeito `[leadId]` reseta chat/histórico e recarrega ficha + conversa (tudo com flag `cancelled`, então trocas rápidas não misturam respostas). `clearLead` faz `setLeadId(null)` e limpa a URL.
+- **Testes:** `test_settings.py` (10) + `test_messages.py` (**49** = 16 originais + 8 do `TestLeadContext` + 3 do retry/fallback v0.3.4 + 15 do `TestConversationHistory` v0.3.5 + 7 do `TestConversationsList` v0.3.6) — `MessageService._chat` é monkeypatchado (nenhum teste depende de rede/chave) e cobre papéis do transcript, formato pt-BR do preço (`R$ 1.200,50`), o guardrail (preço errado, parcelamento 3x, valor sem preço configurado, violação no raciocínio, JSON inválido), o contexto de lead, o retry de formato, o histórico (persistência do `reply`, ordem, isolamento por usuário, 404 de lead alheio, idempotência do save, `DELETE` e falha de banco não derruba o `reply`) e a lista de conversas (lead sem histórico fora, ordenação por atividade, mensagens avulsas sem lead não contam, isolamento por usuário e apagar lead com histórico não quebra — FK sem CASCADE). Total backend: **233 testes passando** (~20s).
+- **Watcher caveat:** rota nova `/abordagem` só aparece após `docker compose restart frontend` — o `next dev` dentro do container Windows→Docker não re-escaneia bind mounts novos. Adicione `WATCHPACK_POLLING=true` ao `frontend` service no `docker-compose.yml` para evitar o problema em desenvolvimentos futuros.
+
+### 3.11 Normalização de enumeração de produto/dificuldade
+
+| Campo | Valor do Prompt (o que a IA volta) | Valor real do enum (banco) | Normalização |
+|-------|-----------------------------------|---------------------------|-------------|
+| `produto` | `"página de venda"` / `"link tree"` | `"Página de vendas"` / `"Link Tree"` | `_normalize_produto()` no backend: minúsculo/sem acento → canonical; desconhecido → `"Portfólio"` |
+| `dificuldade` | `"facil"` / `"media"` / `"dificil"` | `"Fácil"` / `"Médio"` / `"Difícil"` | `_normalize_dificuldade()` no backend: mesmo processo; desconhecido → `"Médio"` |
+| Frontend | `toProduto()` / `toDificuldade()` em `excavator.ts` — espelha o backend para cards já excavados antes da correção |
+
+Essa normalização evita o erro 422 `{"field":"produto","type":"enum","message":"valor não permitido"}` ao criar lead via `POST /api/v1/leads` e cobre cards excavados anteriormente que ainda guardam o valor antigo no estado da página.
+
+---
+
+---
+
 ## 4. Convenções de Código (Skills `.agents/`)
 
 ### 4.1 CSS e Componentização (SKILL_CSS.md)
@@ -315,6 +369,7 @@ Padrão único em **todos** os endpoints — corpo `application/problem+json`:
 - Todo componente `Foo.tsx` tem `Foo.module.css` correspondente.
 - Tokens de tema (cores, espaçamento, tipografia) vivem em `src/styles/tokens.css`.
 - Componentizar quando: repetição ≥2x, componente >150–200 linhas, estado isolado ou reuso real.
+- **Textos visíveis (v0.3.7):** nenhum travessão "—" em frase da UI — usar ponto ou vírgula no lugar. Exceções: o placeholder de célula vazia da tabela de Leads (`"—"`) e os separadores `──`/comentários de código (não são texto visível).
 
 ### 4.2 Qualidade e Testes (SKILL_Qualidade_e_Padroes.md)
 
